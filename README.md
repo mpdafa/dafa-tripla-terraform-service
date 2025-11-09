@@ -1,7 +1,3 @@
-<div align="center">
-   <img src="/img/logo.svg?raw=true" width=600 style="background-color:white;">
-</div>
-
 # SRE Technical Take-Home Assignment : Terraform-Parse (Terraform + Helm)
 
 Welcome to the Tripla SRE take-home assignment! 🧑‍💻 This exercise is designed to simulate a real-world scenario where you'll tackle challenges across infrastructure, platform engineering, and automation.
