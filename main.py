@@ -7,7 +7,7 @@ app = Flask(__name__)
 def get_handler():
     resource_type = request.headers.get("resource-type")
     resources = []
-    with open(f"terraform/{resource_type}.tf", "r") as f:
+    with open(f"terraform/main.tf", "r") as f:
         data = hcl2.load(f)
         for block in data.get("resource", {}):
             for type, defs in block.items():
