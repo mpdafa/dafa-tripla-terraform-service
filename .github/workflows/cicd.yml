@@ -57,19 +57,6 @@ jobs:
 
       - name: Helm Upgrade/Install
         run: |
-          helm upgrade backend ./helm/backend \
+          helm upgrade terraform-parse-service ./helm \
             --install \
-            --namespace ${{ env.NAMESPACE }} \
-            --create-namespace \
-            --set backend.image.repository=${{ env.IMAGE_NAME }} \
-            --set backend.image.tag=${{ env.IMAGE_TAG }} \
-            --set backend.service.type=ClusterIP \
-            --set backend.service.port=8080 \
-            --set backend.resources.requests.cpu=1 \
-            --set backend.resources.requests.memory=256Mi \
-            --set backend.resources.limits.cpu=2 \
-            --set backend.resources.limits.memory=512Mi \
-            --set backend.autoscaling.enabled=true \
-            --set backend.autoscaling.minReplicas=2 \
-            --set backend.autoscaling.maxReplicas=4 \
-            --set backend.autoscaling.targetCPU=60
+            --create-namespace
