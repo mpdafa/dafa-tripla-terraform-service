@@ -45,6 +45,8 @@ To improve this, i later raised [a followup PR](https://github.com/mpdafa/dafa-t
 
 [ToDo]
 
+Add readiness and liveness probe
+
 ### Part 4 (System Behavior): 
 *Share your thoughts on how this setup might behave under load or in failure scenarios, and what strategies could make it more resilient in the long term.*
 

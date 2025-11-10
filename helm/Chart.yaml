@@ -1,6 +1,6 @@
 apiVersion: v2
-name: tripla-apps
-description: Multi-service chart (frontend + backend) with intentional issues
+name: tripla-terraform-parse-service-apps
+description: Multi-service chart (frontend + backend)
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+version: 1.0
+appVersion: "1.0"

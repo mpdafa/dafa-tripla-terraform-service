@@ -1,0 +1,75 @@
+name: Deploy terraform parse service
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: mpdafa/terraform-parse-service
+  IMAGE_TAG: 1.0
+  NAMESPACE: backend
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build & Push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" > ~/.kube/config
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Helm Upgrade/Install
+        run: |
+          helm upgrade backend ./helm/backend \
+            --install \
+            --namespace ${{ env.NAMESPACE }} \
+            --create-namespace \
+            --set backend.image.repository=${{ env.IMAGE_NAME }} \
+            --set backend.image.tag=${{ env.IMAGE_TAG }} \
+            --set backend.service.type=ClusterIP \
+            --set backend.service.port=8080 \
+            --set backend.resources.requests.cpu=1 \
+            --set backend.resources.requests.memory=256Mi \
+            --set backend.resources.limits.cpu=2 \
+            --set backend.resources.limits.memory=512Mi \
+            --set backend.autoscaling.enabled=true \
+            --set backend.autoscaling.minReplicas=2 \
+            --set backend.autoscaling.maxReplicas=4 \
+            --set backend.autoscaling.targetCPU=60
