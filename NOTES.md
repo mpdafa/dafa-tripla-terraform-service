@@ -4,9 +4,9 @@
 **Answer :**
 
 I have created the terraform generator and parser service using python flask framework that able to served restful http request, along with a custom library, python-hcl2 that able to parse terrafrom (hcl file) resource blocks. This service will act as a backend for platform as a service that can easily used by developer to on board their resources. The API exposes several endpoints which are :
-- **POST /provision** : It accepts json payload/body which consist of needed field for resrouce creation which in this case, AWS S3 bucket. Python function will retrieved the details and rewriting the terrafom file by appending the new S3 bucket resrouce block into the file.
+- **POST /provision** : It accepts json payload/body which consist of needed field for resrouce creation which in this case, AWS S3 bucket. Python function will retrieved the details and write terrafom blocks into a dedicated. 
 - **GET /get-resource:** It reads terraform file based on the specified resrouce type, by utilzing hcl2 modules to parse the tf resoruce block into a readable dict. It loops through all the block to retrieve the resrouce name and the total resrouce.
-- **DELETE /destroy-resrouce** : It removes a specific resrouce block from the TF. The destroy_handler will read the tf file with hcl2 modules to parse the tf files, load it into a dict. To remove the block, It will rewrite the file by skipping the specified resrouce block and definitions in the iteration.
+- **DELETE /destroy-resrouce** : It removes a specific resrouce block from the TF. The destroy_handler will read the tf file with hcl2 modules to parse the tf files, load it into a dict. To remove the block, It will rewrite the file by skipping the specified resrouce block and definitions in the iteration. 
 
 Working Steps:
 
@@ -22,7 +22,7 @@ Additionaly, i have also refactored the terraform generation to create a dedicat
     > This is the TF IAAC repo that i have created along with the CICD Workflows : https://github.com/mpdafa/dafa-tripla-iaac
 
 - We can utilize [github endpoints](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#create-a-pull-request) to push changes to new branch and raise PR to a dedicated terraform repo (simliar to gitlab case for access token that can be used by bot). 
-- Simplify resoruce block by using modules, either we create this from scratch or using existing one in OSS like [this one](https://github.com/terraform-aws-modules/terraform-aws-s3-bucket).
+- Simplify resoruce block by using modules, either we create this from scratch or using existing one in OSS like [this one](https://github.com/terraform-aws-modules/terraform-aws-s3-bucket). The strong reason behind this is that if we use conventional resoruce block we can put our restructured our resrouce file into sub files (per resrouce or team folder). By implementing subfolder in our IAAC we can maintain our infra easily accross SRE and Developers team.
 
 
 ### Part 2 (Terraform): 
