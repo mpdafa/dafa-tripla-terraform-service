@@ -133,7 +133,7 @@ def generate_tf_template(payload: dict):
         policy_statements=statements
     )
 
-    output_tf = f"terraform/{region}/{resource_name}.tf"
+    output_tf = f"terraform/{region}/s3_{resource_name}.tf"
     with open(output_tf, "a") as f:
         f.write(tf_rendered + "\n")
 
