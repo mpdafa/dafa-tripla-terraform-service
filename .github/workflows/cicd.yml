@@ -61,6 +61,7 @@ jobs:
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" > ~/.kube/config
+          cat ~/.kube/config
 
       - name: Set up Helm
         uses: azure/setup-helm@v4
