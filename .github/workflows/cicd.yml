@@ -70,4 +70,4 @@ jobs:
         run: |
           helm upgrade terraform-parse-service ./helm \
             --install \
-            --create-namespace
+            -n backend
