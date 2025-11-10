@@ -167,3 +167,47 @@ resource "aws_s3_bucket_acl" "static_assets_static_assets_dummy_5" {
   ]
 }
 
+# Bucket bucket_dummy_with_policy_1
+resource "aws_s3_bucket" "bucket_dummy_with_policy_1" {
+  bucket = "dummy-with-policy-1"
+  tags = {
+    Env = "staging"
+    ManagedBy = "terraform-parse-service"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "bucket_dummy_with_policy_1" {
+  bucket = aws_s3_bucket.bucket_dummy_with_policy_1.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "bucket_dummy_with_policy_1" {
+  bucket = aws_s3_bucket.bucket_dummy_with_policy_1.id
+  block_public_acls       = true
+  ignore_public_acls      = true
+  block_public_policy     = false
+  restrict_public_buckets = false
+}
+
+
+resource "aws_s3_bucket_policy" "bucket_dummy_with_policy_1" {
+  bucket = aws_s3_bucket.bucket_dummy_with_policy_1.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      
+      {
+        "Sid": "RestrictToSpecificAccount",
+        "Effect": "Allow",
+        "Principal": ["arn:aws:iam::123456789012:root"],
+        "Action": ["s3:PutObject"],
+        "Resource": ["arn:aws:s3:::tripla-assets/*"]
+
+      }
+      
+    ]
+  })
+}
+

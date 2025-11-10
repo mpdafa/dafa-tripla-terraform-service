@@ -1,0 +1,46 @@
+# Bucket {{ resource_name }}
+resource "aws_s3_bucket" "{{ resource_name }}" {
+  bucket = "{{ bucket_name }}"
+  tags = {
+    Env = "{{ environment }}"
+    ManagedBy = "terraform-parse-service"
+  }
+}
+
+resource "aws_s3_bucket_ownership_controls" "{{ resource_name }}" {
+  bucket = aws_s3_bucket.{{ resource_name }}.id
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "{{ resource_name }}" {
+  bucket = aws_s3_bucket.{{ resource_name }}.id
+  block_public_acls       = true
+  ignore_public_acls      = true
+  block_public_policy     = false
+  restrict_public_buckets = false
+}
+
+{% if enable_policy %}
+resource "aws_s3_bucket_policy" "{{ resource_name }}" {
+  bucket = aws_s3_bucket.{{ resource_name }}.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {% for stmt in policy_statements %}
+      {
+        "Sid": "{{ stmt.sid }}",
+        "Effect": "{{ stmt.effect }}",
+        "Principal": {{ stmt.principals | tojson }},
+        "Action": {{ stmt.actions | tojson }},
+        "Resource": {{ stmt.resources | tojson }}
+        {% if stmt.conditions %}
+        ,Condition: {{ stmt.conditions | tojson }}
+        {% endif %}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ]
+  })
+}
+{% endif %}

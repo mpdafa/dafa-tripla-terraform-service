@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from jinja2 import Template # https://jinja.palletsprojects.com/en/stable/api/
 import hcl2 # https://pypi.org/project/python-hcl2/
 
 app = Flask(__name__)
@@ -6,8 +7,9 @@ app = Flask(__name__)
 @app.get("/get-resource")
 def get_handler():
     resource_type = request.headers.get("resource-type")
+    region = request.headers.get("aws-region", "ap-southeast-1")
     resources = []
-    with open(f"terraform/main.tf", "r") as f:
+    with open(f"terraform/{region}/main.tf", "r") as f:
         data = hcl2.load(f)
         for block in data.get("resource", {}):
             for type, defs in block.items():
@@ -27,13 +29,14 @@ def post_handler():
         return jsonify({"error": "Missing JSON payload"}), 400
 
     #generate_tf_template(data, f"terraform/{data.get("resource")}.tf")
-    generate_tf_template(data, f"terraform/main.tf")
+    generate_tf_template(data)
     return jsonify({"received": data})
 
 @app.delete("/delete-resource")
 def destroy_handler():
     resource_type = request.headers.get("resource-type")
     resource_name = request.headers.get("resource-name")
+    region = request.headers.get("aws-region", "ap-southeast-1")
 
     if not (resource_type and resource_name):
         return jsonify({"error": "Missing resource type or resource name!"}), 404
@@ -54,72 +57,48 @@ def destroy_handler():
 
     # Rewrite file
     #with open(f"terraform/{resource_type}.tf", "w") as f:
-    with open(f"terraform/main.tf", "w") as f: 
+    with open(f"terraform/{region}/main.tf", "w") as f: 
         f.write("resource blocks updated\n") 
 
     return jsonify({
         "message": f"{resource_type}.{resource_name} has been removed"
     })
 
-def generate_tf_template(payload: dict, output_tf):
+def generate_tf_template(payload: dict):
     resource_type = payload.get("resource")
     props = payload.get("properties", {})
-    acl = props.get("acl", "").lower()
-    acl_block = ""
 
     if resource_type != "aws_s3_bucket":
         raise ValueError(f"Unsupported resource type: {resource_type}")
-    if acl not in ["private", "public"]:
-        raise ValueError(f"Missing or invalid ACL value: '{props.get('acl')}'. Must be 'private' or 'public'.")
 
-    converted_name = f"static_assets_{props.get('bucket-name').replace('-', '_')}"
+    bucket_name = props.get("bucket-name")
+    environment = props.get("environment", "dev")
+    region = props.get("aws-region", "ap-southeast-1")
+    enable_policy = props.get("enable-policy", False)
+    policy_data = props.get("policy", {})
 
-    # 🧩 Shared base section
-    base_block = f'''## Bucket {converted_name}
-resource "aws_s3_bucket" "{converted_name}" {{
-  bucket_prefix = "{props.get('bucket-name')}-"
-  tags = {{
-      Env = "{props.get('environment')}"
-  }}
-}}
+    resource_name = f"bucket_{bucket_name.replace('-', '_')}"
 
-output "bucket_name_{converted_name}" {{
-  value = aws_s3_bucket.{converted_name}.bucket
-}}
+    statements = []
+    if enable_policy and policy_data:
+        statements = policy_data.get("statements", [])
 
-resource "aws_s3_bucket_ownership_controls" "{converted_name}" {{
-  bucket = aws_s3_bucket.{converted_name}.id
+    # Load jinja template
+    with open("jinja-template/s3.tf.j2") as f:
+        template = Template(f.read())
 
-  rule {{
-    object_ownership = "BucketOwnerPreferred"
-  }}
-}}
-'''
+    tf_rendered = template.render(
+        aws_region=region,
+        bucket_name=bucket_name,
+        environment=environment,
+        resource_name=resource_name,
+        enable_policy=enable_policy,
+        policy_statements=statements
+    )
 
-    if acl == "public":
-        acl_block = f'''
-resource "aws_s3_bucket_public_access_block" "{converted_name}" {{
-  bucket = aws_s3_bucket.{converted_name}.id
-  block_public_acls       = false
-  ignore_public_acls      = false
-  block_public_policy     = true
-  restrict_public_buckets = true
-}}
-
-resource "aws_s3_bucket_acl" "{converted_name}" {{
-  bucket = aws_s3_bucket.{converted_name}.id
-  acl    = "public-read"
-  depends_on = [
-    aws_s3_bucket_ownership_controls.{converted_name},
-    aws_s3_bucket_public_access_block.{converted_name}
-  ]
-}}
-'''
-    final_block = base_block + acl_block
-
+    output_tf = f"terraform/{region}/main.tf"
     with open(output_tf, "a") as f:
-        f.write(final_block + "\n")
-
+        f.write(tf_rendered + "\n")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
