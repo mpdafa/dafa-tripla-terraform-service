@@ -1,5 +1,5 @@
 ### Part 1 (API Service): 
-*Describe how you implemented the `Terraform-Parse` service. Include the framework/language you chose, how the API works, and how it translates the payload into Terraform code.*
+*Describe how you implemented the `terraform-parse-service`. Include the framework/language you chose, how the API works, and how it translates the payload into Terraform code.*
 
 **Answer :**
 
@@ -13,6 +13,16 @@ Working Steps:
 Initially i am creating the MVP (minimum viable product) to share basic template generator function by concantenate and basic functionality to update the terraform file under the same directory as the service (please refer the code in this [initial commit](https://github.com/mpdafa/dafa-tripla-terraform-service/commit/dfa957422cb4ed8ddcfd1d9a6eb522c8e1841dc5)).
 
 To improve this, i later raised [a followup PR](https://github.com/mpdafa/dafa-tripla-terraform-service/pull/2) where I refactored the function to use Jinja templates. This way, we can reduce complex loop on the code and maintain the TF template file easier.  Additionally, i also replace the S3 bucket acl to iam policy for access control. The reasons behind this change will be explained in the next part.
+
+Additionaly, i have also refactored the terraform generation to create a dedicated file for each S3 bucket instaed of appending into 1 single file, this require adjustment on /get-resource as well. This way, when each resource is defined in its own file, it becomes easier to track changes and enable future extenstion on the platform as a service feature.
+
+**Next Improvement :**
+- For better gitops practice, next thing to be done is to improve the python service to push changes to new branch and raise PR to a dedicated terraform repo (simliar to gitlab case for access token that can be used by bot). 
+
+    > This is the TF IAAC repo that i have created along with the CICD Workflows : https://github.com/mpdafa/dafa-tripla-iaac
+
+- We can utilize [github endpoints](https://docs.github.com/en/rest/pulls/pulls?apiVersion=2022-11-28#create-a-pull-request) to push changes to new branch and raise PR to a dedicated terraform repo (simliar to gitlab case for access token that can be used by bot). 
+- Simplify resoruce block by using modules, either we create this from scratch or using existing one in OSS like [this one](https://github.com/terraform-aws-modules/terraform-aws-s3-bucket).
 
 
 ### Part 2 (Terraform): 
@@ -39,11 +49,28 @@ To improve this, i later raised [a followup PR](https://github.com/mpdafa/dafa-t
 
     Since this task is open-ended, if it is possible, I decided not to use S3 ACLs—the legacy method of managing S3 bucket permissions—and instead replaced them with IAM policies (slightly deviating from the original requirement). Based on my experience, i believe IAM bucket policies provide a more secure and has better logic to manage the access control. This practice is also mentioned [in this blog post](https://aws.amazon.com/blogs/security/iam-policies-and-bucket-policies-and-acls-oh-my-controlling-access-to-s3-resources/#:~:text=A%20majority%20of%20modern%20use,for%20your%20users%20and%20roles.) 
 
+8. Dedicated Terraform Repo for github actions workflow
+
+    As mentioned in previous part, i have created a dedicated TF repo https://github.com/mpdafa/dafa-tripla-iaac to enable a dedicated TF plan and apply githubaction workflows. This way we can achieve a good auditability by always implementing approvals and manual merge before applying, whenever an infra is provisioned, updated, or removed. For future improvement, the python service will only refer the file to this repo.
+
 
 ### Part 3 (Helm): 
 *Explain the problems you encountered with the chart, how you addressed them, and how you validated your changes.*
 
-[ToDo]
+**Answer :**
+
+1. The Helm template was initially static and not parameterized which means that it couldnt dynamically read configurations from values.yaml. The chart is refactored to use correct Helm template functions and .Values references to make it reusable.
+2. There was a minor syntax error in the backend-deployment.yaml (the slash char) template which caused rendering issues during deployment.
+3. The spec.selector field was missing under the Deployment manifest. This field is required in Kubernetes to define which Pods are managed by the Deployment, ensuring that scaling, resource management, and autoscaling (HPA) work correctly.
+4. To validate the fixes, I used
+    ```
+    helm template backend ./helm -n backend
+    ```
+    to render the final manifest locally and inspect the output. Additionally, helm lint can be integrated into the CI/CD pipeline to automatically validate chart syntax and best practices for every pull request change.
+
+**To be Improved** : 
+- For **future improvement** we can serve the helm chart template in http server, like **ChartMuseum**, so that it can be used accross different applications/namesapce and repositories.
+- Add readiness and liveness probe to ensure no downtime during workload disruption on specific pods.
 
 ### Part 4 (System Behavior): 
 *Share your thoughts on how this setup might behave under load or in failure scenarios, and what strategies could make it more resilient in the long term.*
