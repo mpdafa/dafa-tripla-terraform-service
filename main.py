@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-RESOURCE_FOLDER_MAP = {
+RESOURCE_PREFIX_MAP = {
     "aws_s3_bucket": "s3",
     "aws_eks_cluster": "eks",
     "aws_vpc": "vpc",
@@ -18,28 +18,38 @@ def get_handler():
 
     if not resource_type:
         return jsonify({"error": "Missing required header: resource-type"}), 400
+    
 
-    folder_name = RESOURCE_FOLDER_MAP.get(resource_type, resource_type.split("_")[-1])
-    base_path = f"terraform/{region}/{folder_name}"
-
+    base_path = f"terraform/{region}"
     if not os.path.exists(base_path):
         return jsonify({
-            "error": f"No directory found for resource type '{resource_type}' in region '{region}'",
+            "error": f"No directory found for region '{region}'",
             "expected_path": base_path
         }), 404
 
     resources = []
-
+    prefix = RESOURCE_PREFIX_MAP.get(resource_type, resource_type.split("_")[-1])
     for filename in os.listdir(base_path):
-        if filename.endswith(".tf"):
+        # Example: s3_static_assets_dummy_3.tf
+        if filename.endswith(".tf") and filename.startswith(prefix):
+            file_path = os.path.join(base_path, filename)
             try:
-                with open(os.path.join(base_path, filename), "r") as f:
+                with open(file_path, "r") as f:
                     data = hcl2.load(f)
                     for block in data.get("resource", []):
+                        # Check if this TF defines the same resource type (e.g. aws_s3_bucket)
                         if resource_type in block:
                             resources.extend(block[resource_type].keys())
             except Exception as e:
-                print(f"Error parsing {filename}: {e}")
+                print(f"[WARN] Error parsing {filename}: {e}")
+
+    if not resources:
+        return jsonify({
+            "message": f"No resources found for type '{resource_type}' in region '{region}'",
+            "directory": base_path,
+            "total": 0,
+            "names": []
+        }), 200
 
     return jsonify({
         "region": region,
@@ -123,7 +133,7 @@ def generate_tf_template(payload: dict):
         policy_statements=statements
     )
 
-    output_tf = f"terraform/{region}/{resource_name}.tf"
+    output_tf = f"terraform/{region}/s3_{resource_name}.tf"
     with open(output_tf, "a") as f:
         f.write(tf_rendered + "\n")
 

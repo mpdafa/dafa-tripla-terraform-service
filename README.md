@@ -115,3 +115,22 @@ Currently, it supports AWS S3 bucket provisioning with both private and public A
     "message": "aws_s3_bucket.static_assets_dummy_2 has been removed"
     }
     ```
+
+### CI/CD Workflow (GitHub Actions)
+
+This repository includes complete GitHub Actions pipeline that automates image build using Docker and deployment to EKS using helm
+
+**Workflow Summary**
+- **Build**	: the Docker image from the Dockerfile and tags it with version and commit SHA.
+- **Push** : Pushes the built image to Docker Hub
+ using a GitHub secret token (DOCKERHUB_TOKEN).
+- **Deploy** : Deploys the new image to a Kubernetes cluster using Helm based on defined values.yaml. The chart is located under helm/.
+- **Trigger Condition** : The build and push workflow runs automatically on every push or pull request to the main branch. But deployment can only run on main branch.
+
+**GitHub Secrets Configuration**
+
+| Secret Name | Description |
+|------------------|-----------------|
+| `DOCKERHUB_USERNAME` | Docker Hub account username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token for pushing images |
+| `KUBE_CONFIG` | Base64-encoded kubeconfig file used by Helm and kubectl |
