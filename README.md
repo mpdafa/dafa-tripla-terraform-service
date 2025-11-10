@@ -1,7 +1,7 @@
 ## SRE Technical Take-Home Assignment : Terraform-Parse (Terraform + Helm)
 
 This repository provides a python flask-based API that dynamically generates Terraform (.tf) configuration files.
-Currently, it supports AWS S3 bucket provisioning with both private and public ACL modes.
+Currently, it supports AWS S3 bucket provisioning with both private and public ACL modes. For questions related to this task, please refer the answer in [NOTES.md file](https://github.com/mpdafa/dafa-tripla-terraform-service/blob/main/NOTES.md)
 
 ### API details
 
@@ -17,15 +17,40 @@ Currently, it supports AWS S3 bucket provisioning with both private and public A
 
     Request
     ```
+    # Without Policy
     curl -X POST http://localhost:5000/provision \
     -H "Content-Type: application/json" \
     -d '{
         "resource": "aws_s3_bucket",
         "properties": {
-        "bucket-name": "static-assets-dummy-3",
+        "bucket-name": "dummy-without-policy-1",
         "environment": "staging",
-        "region": "ap-southeast-1",
-        "acl": "private"
+        "aws-region": "ap-southeast-1",
+        "enable-policy": false
+        }
+    }'
+
+    # With Policy
+    curl -i -X POST http://localhost:5000/provision \
+    -H "Content-Type: application/json" \
+    -d '{
+        "resource": "aws_s3_bucket",
+        "properties": {
+        "bucket-name": "dummy-with-policy-2",
+        "environment": "staging",
+        "aws-region": "ap-southeast-1",
+        "enable-policy": true,
+        "policy": {
+            "statements": [
+            {
+                "sid": "RestrictToSpecificAccount",
+                "effect": "Allow",
+                "principals": ["arn:aws:iam::123456789012:root"],
+                "actions": ["s3:PutObject"],
+                "resources": ["arn:aws:s3:::tripla-assets/*"]
+            }
+            ]
+        }
         }
     }'
     ```
@@ -34,13 +59,30 @@ Currently, it supports AWS S3 bucket provisioning with both private and public A
     ```
     {
     "received": {
-        "resource": "aws_s3_bucket",
         "properties": {
-        "bucket-name": "static-assets-dummy-3",
+        "aws-region": "ap-southeast-1",
+        "bucket-name": "dummy-with-policy-1",
+        "enable-policy": true,
         "environment": "staging",
-        "region": "ap-southeast-1",
-        "acl": "private"
+        "policy": {
+            "statements": [
+            {
+                "actions": [
+                "s3:PutObject"
+                ],
+                "effect": "Allow",
+                "principals": [
+                "arn:aws:iam::123456789012:root"
+                ],
+                "resources": [
+                "arn:aws:s3:::tripla-assets/*"
+                ],
+                "sid": "RestrictToSpecificAccount"
+            }
+            ]
         }
+        },
+        "resource": "aws_s3_bucket"
     }
     }
     ```
